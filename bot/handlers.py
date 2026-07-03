@@ -220,7 +220,11 @@ class BotHandlerManager:
             f"_Employees must login within {LATE_LOGIN_GRACE_MINUTES} minutes of their shift start._"
         )
         try:
-            await update.message.reply_text(late_msg, parse_mode="Markdown", reply_markup=keyboard)
+            # No reply_markup here: "Login Recorded!" (sent immediately before this,
+            # in the same handler call) already re-attached the persistent keyboard.
+            # Re-attaching it again here made Telegram Desktop anchor its "reply to"
+            # bar on this message instead of the login confirmation.
+            await update.message.reply_text(late_msg, parse_mode="Markdown")
         except Exception:
             pass
 
