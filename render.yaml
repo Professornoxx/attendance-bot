@@ -1,0 +1,24 @@
+services:
+  - type: worker
+    name: telegram-attendance-bot
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ADMIN_TELEGRAM_IDS
+        sync: false
+      - key: TIMEZONE
+        value: Asia/Kolkata
+      - key: DB_PATH
+        value: /var/data/attendance.db
+      - key: GOOGLE_SPREADSHEET_ID
+        sync: false
+      - key: GOOGLE_CREDS_JSON
+        sync: false
+    disk:
+      name: attendance-data
+      mountPath: /var/data
+      sizeGB: 1

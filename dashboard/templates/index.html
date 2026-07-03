@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bright Path Attendance - Admin Dashboard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-business-time brand-icon"></i>
+                <div class="brand-details">
+                    <h1>Bright Path Attendance</h1>
+                    <span>Management Console</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#dashboard" class="nav-item active" onclick="switchTab('dashboard')">
+                    <i class="fa-solid fa-chart-line"></i> Dashboard Overview
+                </a>
+                <a href="#shifts" class="nav-item" id="shifts-nav-item" onclick="switchTab('shifts')">
+                    <i class="fa-solid fa-business-time"></i> Shift Management
+                </a>
+                <a href="#employees" class="nav-item" onclick="switchTab('employees')">
+                    <i class="fa-solid fa-users"></i> Employee Directory
+                </a>
+                <a href="#attendance" class="nav-item" onclick="switchTab('attendance')">
+                    <i class="fa-solid fa-calendar-check"></i> Staff Attendance
+                </a>
+                <a href="#requests" class="nav-item" id="requests-nav-item" onclick="switchTab('requests')">
+                    <i class="fa-solid fa-envelope-open-text"></i> Early Logout Requests
+                    <span class="badge badge-error hidden" id="requests-pending-badge">0</span>
+                </a>
+                <a href="#permissions" class="nav-item" id="permissions-nav-item" onclick="switchTab('permissions')">
+                    <i class="fa-solid fa-shield-halved"></i> Permission Requests
+                    <span class="badge badge-warning hidden" id="permissions-pending-badge">0</span>
+                </a>
+                <a href="#export" class="nav-item" onclick="switchTab('export')">
+                    <i class="fa-solid fa-file-export"></i> Data Exports
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sys-time">
+                    <i class="fa-solid fa-clock"></i>
+                    <span id="live-time">--:--:--</span>
+                </div>
+                <div class="server-status">
+                    <span class="pulse-indicator"></span> Realtime Sync Active
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Dashboard Window -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="welcome">
+                    <h2>Hello, Admin</h2>
+                    <p>Here is your company attendance overview for today.</p>
+                </div>
+                <div class="date-display">
+                    <i class="fa-solid fa-calendar-day"></i> <span id="current-date">June 23, 2026</span>
+                </div>
+            </header>
+
+            <!-- SCREEN 1: DASHBOARD OVERVIEW -->
+            <section id="screen-dashboard" class="screen-section">
+                <!-- KPI Counters Grid -->
+                <div class="kpi-grid">
+                    <div class="kpi-card purple-glow">
+                        <div class="kpi-header">
+                            <h3>Total Employees</h3>
+                            <i class="fa-solid fa-user-tie icon-box"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-total-employees">0</div>
+                        <div class="kpi-footer">Registered in bot</div>
+                    </div>
+
+                    <div class="kpi-card green-glow">
+                        <div class="kpi-header">
+                            <h3>Active Now</h3>
+                            <i class="fa-solid fa-circle-check icon-box text-success"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-active-employees">0</div>
+                        <div class="kpi-footer">Currently logged in</div>
+                    </div>
+
+                    <div class="kpi-card orange-glow">
+                        <div class="kpi-header">
+                            <h3>On Break</h3>
+                            <i class="fa-solid fa-mug-hot icon-box text-warning"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-on-break">0</div>
+                        <div class="kpi-footer">Lunch/Field Break</div>
+                    </div>
+
+                    <div class="kpi-card red-glow">
+                        <div class="kpi-header">
+                            <h3>Banned Today</h3>
+                            <i class="fa-solid fa-user-slash icon-box text-error"></i>
+                        </div>
+                        <div class="kpi-value" id="kpi-banned-employees">0</div>
+                        <div class="kpi-footer">Exceeded break limits</div>
+                    </div>
+                </div>
+
+                <div class="analytics-layout">
+                    <!-- Real-time Employee Activity Table -->
+                    <div class="glass-panel activity-panel">
+                        <div class="panel-header">
+                            <h3>Today's Employee Status Overview</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="fetchEmployeeList()"><i
+                                    class="fa-solid fa-rotate"></i> Refresh</button>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Employee</th>
+                                        <th>Shift Name</th>
+                                        <th>Status</th>
+                                        <th>Today Hours</th>
+                                        <th>Fines Applied</th>
+                                        <th>Attendance Type</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dashboard-employees-body">
+                                    <!-- Dynamic rows from app.js -->
+                                    <tr>
+                                        <td colspan="7" class="loading">Loading employee attendance...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 2: ALL EMPLOYEES DIRECTORY -->
+            <section id="screen-employees" class="screen-section hidden">
+                <div class="glass-panel">
+                    <div class="panel-header" style="flex-wrap:wrap; gap:16px; margin-bottom: 24px;">
+                        <div>
+                            <h3><i class="fa-solid fa-users"></i> Staff Management Console</h3>
+                            <span class="subtext">Configure employees, projects, shifts, and settings.</span>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                            <div class="search-box" style="margin:0; width: 250px;">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="employee-search" placeholder="Search staff details..."
+                                    oninput="filterEmployees()">
+                            </div>
+                            <button class="btn btn-primary" onclick="openAddStaffModal()">
+                                <i class="fa-solid fa-user-plus"></i> Add New Staff
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Telegram ID <span
+                                            style="font-weight:400;font-size:10px;color:var(--text-secondary);">(Primary)</span>
+                                    </th>
+                                    <th>Full Name</th>
+                                    <th>Username</th>
+                                    <th>Assigned Project</th>
+                                    <th>Shift & Hours</th>
+                                    <th>Break Allowance</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="directory-employees-body">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 3: STAFF ATTENDANCE RECORDS -->
+            <section id="screen-attendance" class="screen-section hidden">
+                <div class="glass-panel">
+                    <div class="panel-header" style="flex-wrap:wrap; gap:12px;">
+                        <div>
+                            <h3><i class="fa-solid fa-calendar-check"></i> Staff Attendance Records</h3>
+                            <span class="subtext">Full attendance log for all staff on the selected date.</span>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <div
+                                style="display:flex; align-items:center; gap:8px; background:var(--surface-2); padding:6px 12px; border-radius:8px; border:1px solid var(--border);">
+                                <i class="fa-solid fa-calendar-day" style="color:var(--primary)"></i>
+                                <input type="date" id="attendance-date-picker"
+                                    style="background:transparent; border:none; color:var(--text-primary); font-family:inherit; font-size:14px; outline:none; cursor:pointer;"
+                                    onchange="fetchAttendancePage()">
+                            </div>
+                            <button class="btn btn-secondary btn-sm" onclick="fetchAttendancePage()">
+                                <i class="fa-solid fa-rotate"></i> Refresh
+                            </button>
+                            <button class="btn btn-primary btn-sm" onclick="generateBreakDetailsReport()" style="background-color: #10b981; border-color: #10b981;">
+                                <i class="fa-regular fa-file-excel"></i> Export Break Details
+                            </button>
+                            <div style="position:relative; display:inline-block;">
+                                <button class="btn btn-primary btn-sm" onclick="toggleReportDropdown()"
+                                    id="report-dropdown-btn">
+                                    <i class="fa-solid fa-file-invoice"></i> Generate Report ▾
+                                </button>
+                                <div id="report-dropdown-menu" class="hidden"
+                                    style="position:absolute; top:110%; right:0; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; min-width:180px; z-index:100; box-shadow:0 8px 24px rgba(0,0,0,0.4); overflow:hidden;">
+                                    <button onclick="generateAttendanceReport('csv')"
+                                        style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:none; border:none; color:var(--text-primary); cursor:pointer; font-family:inherit; font-size:13px;"
+                                        onmouseover="this.style.background='var(--surface-3)'"
+                                        onmouseout="this.style.background='none'">
+                                        <i class="fa-solid fa-file-csv" style="color:#22d3ee;"></i> Export as CSV
+                                    </button>
+                                    <button onclick="generateAttendanceReport('xlsx')"
+                                        style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:none; border:none; color:var(--text-primary); cursor:pointer; font-family:inherit; font-size:13px;"
+                                        onmouseover="this.style.background='var(--surface-3)'"
+                                        onmouseout="this.style.background='none'">
+                                        <i class="fa-regular fa-file-excel" style="color:#4ade80;"></i> Export as Excel
+                                    </button>
+                                    <button onclick="generateAttendanceReport('pdf')"
+                                        style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:none; border:none; color:var(--text-primary); cursor:pointer; font-family:inherit; font-size:13px;"
+                                        onmouseover="this.style.background='var(--surface-3)'"
+                                        onmouseout="this.style.background='none'">
+                                        <i class="fa-regular fa-file-pdf" style="color:#f87171;"></i> Export as PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Summary stat chips -->
+                    <div id="attendance-summary-bar" style="display:flex; gap:12px; margin:16px 0 8px; flex-wrap:wrap;">
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Employee</th>
+                                    <th>Shift</th>
+                                    <th>Login Time</th>
+                                    <th>Logout Time</th>
+                                    <th>Break Time</th>
+                                    <th>Net Hours</th>
+                                    <th>Attendance Type</th>
+                                    <th>Fine</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-page-body">
+                                <tr>
+                                    <td colspan="10" class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading
+                                        attendance data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 4: EARLY LOGOUT REQUESTS -->
+            <section id="screen-requests" class="screen-section hidden">
+                <div class="glass-panel">
+                    <div class="panel-header">
+                        <h3>Early Logout Request Review Panel</h3>
+                        <span class="subtext">Employees who checkout before their shift ends submit justifications
+                            here.</span>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Employee</th>
+                                    <th>Logout Time</th>
+                                    <th>Justification Reason</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requests-body">
+                                <!-- Dynamic rows -->
+                                <tr>
+                                    <td colspan="6" class="loading">No early logout requests submitted.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 4: DATA EXPORTS -->
+            <section id="screen-export" class="screen-section hidden">
+                <div class="export-container">
+                    <div class="glass-panel export-card">
+                        <h3><i class="fa-solid fa-file-invoice"></i> Export System Logs</h3>
+                        <p>Generate formatted excel worksheets, PDFs or structured CSV reports.</p>
+
+                        <form id="export-form" onsubmit="triggerExport(event)">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="export-start-date">Start Date</label>
+                                    <input type="date" id="export-start-date" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="export-end-date">End Date</label>
+                                    <input type="date" id="export-end-date" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="export-employee">Employee Filter (Optional)</label>
+                                    <select id="export-employee">
+                                        <option value="">All Employees</option>
+                                        <!-- Dynamic list of employees -->
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="export-shift-type">Shift Type Filter</label>
+                                    <select id="export-shift-type">
+                                        <option value="">All Shifts</option>
+                                        <option value="day">☀️ Day Shift</option>
+                                        <option value="night">🌙 Night Shift</option>
+                                        <option value="unassigned">⚫ Unassigned</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Select Output Format</label>
+                                <div class="format-selectors">
+                                    <label class="format-radio">
+                                        <input type="radio" name="format" value="xlsx" checked>
+                                        <div class="format-btn">
+                                            <i class="fa-regular fa-file-excel text-success"></i>
+                                            <span>Excel (.xlsx)</span>
+                                        </div>
+                                    </label>
+                                    <label class="format-radio">
+                                        <input type="radio" name="format" value="pdf">
+                                        <div class="format-btn">
+                                            <i class="fa-regular fa-file-pdf text-error"></i>
+                                            <span>PDF Report</span>
+                                        </div>
+                                    </label>
+                                    <label class="format-radio">
+                                        <input type="radio" name="format" value="csv">
+                                        <div class="format-btn">
+                                            <i class="fa-solid fa-file-csv text-info"></i>
+                                            <span>CSV Text</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fa-solid fa-download"></i> Generate and Export
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 5: SHIFT MANAGEMENT -->
+            <section id="screen-shifts" class="screen-section hidden">
+                <div class="glass-panel">
+                    <div class="panel-header" style="flex-wrap:wrap; gap:16px; margin-bottom: 24px;">
+                        <div>
+                            <h3><i class="fa-solid fa-business-time"></i> Shift Management</h3>
+                            <span class="subtext">Categorized view of all staff by project and shift type.</span>
+                        </div>
+
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <!-- Search -->
+                            <div class="search-box" style="margin:0; width: 250px;">
+                                <i class="fa-solid fa-magnifying-glass"></i>
+                                <input type="text" id="shift-search" placeholder="Search name, user, project..."
+                                    oninput="filterShiftsPage()">
+                            </div>
+
+                            <!-- Filter Status -->
+                            <select id="shift-status-filter" onchange="filterShiftsPage()"
+                                style="background:var(--surface-2); border:1px solid var(--border); color:var(--text-primary); padding:8px 12px; border-radius:8px; outline:none; font-family:inherit; cursor:pointer;">
+                                <option value="all">All Statuses</option>
+                                <option value="working">Active / Working</option>
+                                <option value="absent">Absent</option>
+                                <option value="half_day">Half Day</option>
+                                <option value="full_day">Full Day</option>
+                                <option value="banned">Banned</option>
+                            </select>
+
+                            <!-- Add Staff Button -->
+                            <button class="btn btn-primary" onclick="openAddStaffModal()">
+                                <i class="fa-solid fa-user-plus"></i> Add New Staff
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Shift selection tab buttons -->
+                    <div
+                        style="display: flex; gap: 15px; margin-bottom: 25px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <button class="btn btn-primary" id="btn-shift-day" onclick="selectShiftType('day')"
+                            style="border-radius: 8px; font-weight: 600;">
+                            🌅 Day Shift
+                        </button>
+                        <button class="btn btn-secondary" id="btn-shift-night" onclick="selectShiftType('night')"
+                            style="border-radius: 8px; font-weight: 600;">
+                            🌃 Night Shift
+                        </button>
+                    </div>
+
+                    <!-- Groups and lists of employees grouped by project -->
+                    <div id="shifts-grouped-container" class="shifts-grouped-grid">
+                        <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading shift categories...
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SCREEN 6: PERMISSION REQUESTS -->
+            <section id="screen-permissions" class="screen-section hidden">
+                <div class="glass-panel">
+                    <div class="panel-header" style="flex-wrap:wrap; gap:16px; margin-bottom: 24px;">
+                        <div>
+                            <h3><i class="fa-solid fa-shield-halved"></i> Permission Requests</h3>
+                            <span class="subtext">Manage employee leave, late arrival, and absence permissions.</span>
+                        </div>
+                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <select id="perm-status-filter" onchange="loadPermissions()"
+                                style="background:var(--surface-2); border:1px solid var(--border); color:var(--text-primary); padding:8px 12px; border-radius:8px; outline:none; font-family:inherit; cursor:pointer;">
+                                <option value="">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                            <button class="btn btn-secondary" onclick="loadPermissions()" style="padding:8px 16px;">
+                                <i class="fa-solid fa-rotate"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Sub-tab bar -->
+                    <div class="perm-tabs"
+                        style="display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid var(--border);">
+                        <button class="perm-tab active" id="perm-tab-pending" onclick="switchPermTab('pending')">
+                            <i class="fa-solid fa-clock"></i> Pending
+                            <span class="tab-count" id="perm-count-pending">0</span>
+                        </button>
+                        <button class="perm-tab" id="perm-tab-approved" onclick="switchPermTab('approved')">
+                            <i class="fa-solid fa-circle-check"></i> Approved
+                            <span class="tab-count" id="perm-count-approved">0</span>
+                        </button>
+                        <button class="perm-tab" id="perm-tab-rejected" onclick="switchPermTab('rejected')">
+                            <i class="fa-solid fa-circle-xmark"></i> Rejected
+                            <span class="tab-count" id="perm-count-rejected">0</span>
+                        </button>
+                        <button class="perm-tab" id="perm-tab-impact" onclick="switchPermTab('impact')">
+                            <i class="fa-solid fa-chart-pie"></i> Impact
+                        </button>
+                    </div>
+
+                    <!-- Pending tab content -->
+                    <div id="perm-panel-pending">
+                        <div id="perm-pending-list" class="perm-cards-grid">
+                            <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading permission
+                                requests...</div>
+                        </div>
+                    </div>
+
+                    <!-- Approved tab content -->
+                    <div id="perm-panel-approved" class="hidden">
+                        <div id="perm-approved-table-container" class="log-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Employee</th>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>Time Range</th>
+                                        <th>Duration</th>
+                                        <th>Reason</th>
+                                        <th>Approved By</th>
+                                        <th>Decided At</th>
+                                        <th>Notification</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="perm-approved-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Rejected tab content -->
+                    <div id="perm-panel-rejected" class="hidden">
+                        <div id="perm-rejected-table-container" class="log-table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Employee</th>
+                                        <th>Type</th>
+                                        <th>Date</th>
+                                        <th>Time Range</th>
+                                        <th>Reason</th>
+                                        <th>Rejected By</th>
+                                        <th>Decided At</th>
+                                        <th>Notification</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="perm-rejected-list"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Impact tab content -->
+                    <div id="perm-panel-impact" class="hidden">
+                        <div class="perm-impact-grid" id="perm-impact-content">
+                            <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Computing impact data...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL 1: EMPLOYEE PROFILE DETAILS -->
+    <div id="modal-profile" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="profile-header-details">
+                    <h2 id="modal-employee-name">John Doe</h2>
+                    <span id="modal-employee-uname">@johndoe</span>
+                </div>
+                <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- User profile stats grid -->
+                <div class="modal-stats-grid">
+                    <div class="modal-stat-card">
+                        <span class="label">Days Present</span>
+                        <h4 id="stat-present-days">0</h4>
+                    </div>
+                    <div class="modal-stat-card">
+                        <span class="label">Net Hours Worked</span>
+                        <h4 id="stat-net-hours">00:00:00</h4>
+                    </div>
+                    <div class="modal-stat-card">
+                        <span class="label">Fines Incurred</span>
+                        <h4 id="stat-total-fines">INR 0</h4>
+                    </div>
+                    <div class="modal-stat-card">
+                        <span class="label">Approved Half-Days</span>
+                        <h4 id="stat-half-days">0</h4>
+                    </div>
+                </div>
+
+                <div class="profile-analytics-grid">
+                    <!-- Performance Charts -->
+                    <div class="profile-chart-panel">
+                        <h3>Growth & Performance Chart</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="employeePerformanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="profile-meta-panel">
+                        <h3>Employee Information</h3>
+                        <ul class="meta-list">
+                            <li><strong>Telegram ID:</strong> <span id="meta-telegram-id">00000</span></li>
+                            <li><strong>Role Class:</strong> <span id="meta-role">employee</span></li>
+                            <li><strong>Scheduled Shift:</strong> <span id="meta-shift-name">Day Shift</span></li>
+                            <li><strong>Productivity Score:</strong>
+                                <div class="progress-bar-container">
+                                    <div class="progress-bar" id="meta-productivity-bar" style="width: 0%"></div>
+                                    <span id="meta-productivity-text">0%</span>
+                                </div>
+                            </li>
+                            <li><strong>Growth Velocity:</strong> <span id="meta-growth-rate">+0.0%</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Sub-tab log viewers -->
+                <div class="profile-logs-panel">
+                    <div class="logs-header">
+                        <h3>Attendance Session History</h3>
+                    </div>
+                    <div class="log-table-container">
+                        <table class="data-table log-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Shift Hours</th>
+                                    <th>Login Time</th>
+                                    <th>Logout Time</th>
+                                    <th>Worked Duration</th>
+                                    <th>Half Day</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modal-attendance-logs">
+                                <!-- Dynamic logs -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: APPLY FINE MODAL -->
+    <div id="modal-fine" class="modal-backdrop hidden">
+        <div class="modal-card modal-sm">
+            <div class="modal-header">
+                <h2>Administrative Fine details</h2>
+                <button class="modal-close" onclick="closeFineModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="fine-form" onsubmit="submitFineToggle(event)">
+                    <input type="hidden" id="fine-session-id">
+                    <input type="hidden" id="fine-current-state">
+
+                    <div class="form-group">
+                        <label for="fine-amount">Fine Amount (INR)</label>
+                        <input type="number" id="fine-amount" value="500" required min="10">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fine-reason">Violation Reason</label>
+                        <select id="fine-reason">
+                            <option value="65-Minute Combined Break Exceeded">65-Minute Combined Break Exceeded</option>
+                            <option value="Late Check-in Limit Breached">Late Check-in Limit Breached</option>
+                            <option value="Early checkout without justification">Early checkout without justification
+                            </option>
+                            <option value="Unauthorized Absence/Logoff">Unauthorized Absence/Logoff</option>
+                            <option value="Custom Penalty">Custom Penalty</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="fine-remarks">Additional Remarks</label>
+                        <textarea id="fine-remarks" placeholder="Enter remarks/details for the employee..."
+                            style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:inherit; resize:vertical; height:70px;"></textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeFineModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Apply Penalty</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ADD/EDIT STAFF MODAL -->
+    <div id="modal-staff" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="staff-modal-title">Add New Staff Member</h2>
+                <button class="modal-close" onclick="closeStaffModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="staff-form" onsubmit="submitStaffForm(event)">
+                    <!-- Hidden field to check if we are editing -->
+                    <input type="hidden" id="staff-orig-telegram-id">
+                    <input type="hidden" id="staff-mode" value="add"> <!-- 'add' or 'edit' -->
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label for="staff-name">Employee Name *</label>
+                            <input type="text" id="staff-name" placeholder="e.g. John Doe" required
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                        <div class="form-group">
+                            <label for="staff-username">Telegram Username</label>
+                            <input type="text" id="staff-username" placeholder="e.g. john_doe (without @)"
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                        <div class="form-group">
+                            <label for="staff-telegram-id">Telegram User ID <span
+                                    style="color:var(--primary);">*</span></label>
+                            <input type="number" id="staff-telegram-id" placeholder="e.g. 58129038" required
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                            <small style="color:var(--text-secondary);font-size:11px;">Primary identifier — must match
+                                the user's Telegram ID exactly.</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="staff-emp-id">Employee ID <span
+                                    style="color:var(--text-secondary);font-size:11px;">(Optional)</span></label>
+                            <input type="text" id="staff-emp-id" placeholder="e.g. EMP101"
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                        <div class="form-group">
+                            <label for="staff-project">Assigned Project *</label>
+                            <input type="text" id="staff-project" placeholder="e.g. 1, 2, Coinus, Payment" required
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                        <div class="form-group">
+                            <label for="staff-shift-type">Shift Type *</label>
+                            <select id="staff-shift-type" required onchange="onShiftTypeChange()"
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                                <option value="day">Day Shift</option>
+                                <option value="night">Night Shift</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                        <div class="form-group">
+                            <label for="staff-shift-start">Shift Start Time *</label>
+                            <input type="text" id="staff-shift-start" value="09:00:00" placeholder="HH:MM:SS" required
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                        <div class="form-group">
+                            <label for="staff-shift-end">Shift End Time *</label>
+                            <input type="text" id="staff-shift-end" value="18:00:00" placeholder="HH:MM:SS" required
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                        <div class="form-group">
+                            <label for="staff-break-allowance">Break Allowance (Minutes) *</label>
+                            <input type="number" id="staff-break-allowance" value="65" required
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                        </div>
+                        <div class="form-group">
+                            <label for="staff-status">Staff Status</label>
+                            <select id="staff-status"
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                                <option value="active">Active</option>
+                                <option value="banned">Deactivated / Banned</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="staff-settings">Attendance Settings (Optional)</label>
+                        <input type="text" id="staff-settings" placeholder="e.g. override settings"
+                            style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                    </div>
+
+                    <div class="modal-actions"
+                        style="margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeStaffModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="staff-submit-btn">Save Employee</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: EDIT ATTENDANCE MODAL -->
+    <div id="modal-edit-attendance" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Edit Attendance Record</h2>
+                <button class="modal-close" onclick="closeEditAttendanceModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-attendance-form" onsubmit="submitEditAttendanceForm(event)">
+                    <input type="hidden" id="edit-att-telegram-id">
+                    <input type="hidden" id="edit-att-date">
+
+                    <div style="margin-bottom:15px;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Employee:</span>
+                        <h3 id="edit-att-employee-name" style="margin:2px 0 0 0; color:var(--primary);">Jeni</h3>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:15px;">
+                        <label for="edit-att-status">Attendance Status</label>
+                        <select id="edit-att-status" onchange="toggleEditTimeInputs()"
+                            style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                            <option value="present">Present</option>
+                            <option value="absent">Absent</option>
+                        </select>
+                    </div>
+
+                    <div id="edit-att-time-fields">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                            <div class="form-group">
+                                <label for="edit-att-login-time">Login Time (HH:MM:SS)</label>
+                                <input type="text" id="edit-att-login-time" placeholder="09:00:00"
+                                    style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-att-logout-time">Logout Time (HH:MM:SS)</label>
+                                <input type="text" id="edit-att-logout-time" placeholder="18:00:00"
+                                    style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <label for="edit-att-half-day">Attendance Day Type</label>
+                            <select id="edit-att-half-day"
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                                <option value="0">Full Day</option>
+                                <option value="1">Half Day</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid var(--border); margin:20px 0; padding-top:15px;">
+                        <div class="form-group" style="margin-bottom:15px;">
+                            <label for="edit-att-fine-applied">Administrative Fine</label>
+                            <select id="edit-att-fine-applied" onchange="toggleEditFineInputs()"
+                                style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                                <option value="0">No Fine</option>
+                                <option value="1">Apply Fine</option>
+                            </select>
+                        </div>
+
+                        <div id="edit-att-fine-fields" class="hidden" style="margin-top:15px;">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:15px;">
+                                <div class="form-group">
+                                    <label for="edit-att-fine-amount">Fine Amount (INR)</label>
+                                    <input type="number" id="edit-att-fine-amount" value="500" min="0"
+                                        style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                                </div>
+                                <div class="form-group">
+                                    <label for="edit-att-fine-reason">Fine Reason</label>
+                                    <input type="text" id="edit-att-fine-reason" placeholder="e.g. Late Login"
+                                        style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary);">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-att-fine-remarks">Additional Remarks</label>
+                                <textarea id="edit-att-fine-remarks"
+                                    placeholder="Enter remarks/details for the employee..."
+                                    style="width:100%; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-family:inherit; resize:vertical; height:60px;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions"
+                        style="margin-top:25px; display:flex; justify-content:flex-end; gap:10px;">
+                        <button type="button" class="btn btn-secondary"
+                            onclick="closeEditAttendanceModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Application Logic -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>

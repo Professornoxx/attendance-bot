@@ -1,0 +1,9 @@
+python-telegram-bot>=20.0
+gspread>=5.0.0
+google-auth>=2.0.0
+python-dotenv>=1.0.0
+pytz>=2023.1
+flask>=3.0.0
+openpyxl>=3.0.0
+reportlab>=5.0.0
+gunicorn>=21.0.0

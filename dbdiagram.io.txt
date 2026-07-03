@@ -1,0 +1,45 @@
+// DBdiagram.io schema for Employee Attendance and Time Tracking System
+
+Table users {
+  telegram_id integer [primary key]
+  username varchar
+  full_name varchar
+  role varchar
+  registered_at timestamp
+}
+
+Table attendance_sessions {
+  id integer [primary key, increment]
+  telegram_id integer [ref: > users.telegram_id]
+  username varchar
+  name varchar
+  date varchar
+  login_time varchar
+  logout_time varchar
+  duration integer
+  status varchar
+}
+
+Table break_sessions {
+  id integer [primary key, increment]
+  telegram_id integer [ref: > users.telegram_id]
+  username varchar
+  name varchar
+  date varchar
+  break_in_time varchar
+  break_out_time varchar
+  duration integer
+  status varchar
+}
+
+Table in_out_sessions {
+  id integer [primary key, increment]
+  telegram_id integer [ref: > users.telegram_id]
+  username varchar
+  name varchar
+  date varchar
+  in_time varchar
+  out_time varchar
+  duration integer
+  status varchar
+}

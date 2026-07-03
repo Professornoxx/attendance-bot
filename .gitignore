@@ -1,0 +1,22 @@
+# Python files
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+
+# Database files
+*.db
+*.db.backup_*
+*.sqlite3
+
+# Google Sheets credentials
+service_account.json
+
+# OS files
+.DS_Store
+
+# Local tooling config (not project code)
+.claude/
