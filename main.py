@@ -1,7 +1,7 @@
 import sys
 import os
 import logging
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, Defaults
 import config
 from database.sqlite_db import SQLiteDatabase
 from google_sheets.sheets_sync import GoogleSheetsSyncManager
@@ -54,9 +54,13 @@ def main() -> None:
     # 4. Telegram Application Builder
     print("🤖 Building Telegram Bot instance...")
     try:
+        # do_quote=False: bot replies are always plain new messages, never shown
+        # as a reply-quote to whichever message triggered them (any chat type).
+        bot_defaults = Defaults(do_quote=False)
         application = (
             ApplicationBuilder()
             .token(config.TELEGRAM_BOT_TOKEN)
+            .defaults(bot_defaults)
             .connect_timeout(30.0)
             .read_timeout(30.0)
             .write_timeout(30.0)
