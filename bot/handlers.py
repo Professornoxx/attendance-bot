@@ -86,7 +86,7 @@ class BotHandlerManager:
                 f"_Please keep your break and field movement within the allowed limit._"
             )
             try:
-                await update.message.reply_text(warn_msg, parse_mode="Markdown", reply_markup=keyboard)
+                await update.message.reply_text(warn_msg, parse_mode="Markdown")
             except Exception:
                 pass
 
@@ -508,8 +508,7 @@ class BotHandlerManager:
             else:
                 # Fallback for unrecognized messages in private chat
                 await update.message.reply_text(
-                    text="ℹ️ Please use the button keyboard below to select actions.",
-                    reply_markup=keyboard
+                    text="ℹ️ Please use the button keyboard below to select actions."
                 )
                 return
 
@@ -517,7 +516,7 @@ class BotHandlerManager:
         # B. Validate State Transition
         is_valid, error_msg, ctx = AttendanceValidationEngine.validate(self.db, telegram_id, action, today_date)
         if not is_valid:
-            await update.message.reply_text(error_msg, reply_markup=keyboard)
+            await update.message.reply_text(error_msg)
             return
 
         # C. Process Database & Sheets operations
@@ -530,8 +529,7 @@ class BotHandlerManager:
                 self.sheets_sync.sync_session_start("attendance", session_id, telegram_id, username, name, today_date, current_time)
                 await update.message.reply_text(
                     f"🟢 *Login Recorded!*\n📅 Date: `{today_date}`\n⏰ Time: `{current_time}`",
-                    parse_mode="Markdown",
-                    reply_markup=keyboard
+                    parse_mode="Markdown"
                 )
                 # Check and apply late login fine (>10 min after shift start)
                 shift_start_time, shift_end_time = get_employee_shift(username, self.db)
@@ -616,8 +614,7 @@ class BotHandlerManager:
                     f"⏰ Time: `{current_time}`\n"
                     f"⏱️ Raw Duration: `{raw_h:02d}h {raw_m:02d}m` (Required: `08h 00m`)\n"
                     f"📊 Day Status: *{day_type_label}*{early_warning}",
-                    parse_mode="Markdown",
-                    reply_markup=keyboard
+                    parse_mode="Markdown"
                 )
 
 
@@ -662,6 +659,5 @@ class BotHandlerManager:
         except Exception as e:
             print(f"❌ Error executing punch action '{action}': {e}")
             await update.message.reply_text(
-                "⚠️ System Error processing action. DB update success, but sync failed.",
-                reply_markup=keyboard
+                "⚠️ System Error processing action. DB update success, but sync failed."
             )
