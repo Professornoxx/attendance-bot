@@ -138,19 +138,7 @@ class AttendanceReporter:
         if net_working_seconds < 0:
             net_working_seconds = 0
 
-        # 6. Approved permission credit (approved requests on this date)
-        approved_permission_seconds = 0
-        try:
-            approved_permission_seconds = db.get_approved_permission_seconds(
-                telegram_id, date_str
-            )
-        except Exception:
-            # Graceful fallback if method is not available (old DB build)
-            approved_permission_seconds = 0
-
-        adjusted_net_working_seconds = net_working_seconds + approved_permission_seconds
-
-        # 7. Automatically apply or revoke break-limit fines
+        # 6. Automatically apply or revoke break-limit fines
         if login_time != "N/A" and att_sessions:
             # Load user break allowance from database
             db_user = db.get_user(telegram_id)
@@ -195,53 +183,12 @@ class AttendanceReporter:
             "total_break_seconds": total_break_seconds,
             "total_move_seconds": total_move_seconds,
             "net_working_seconds": net_working_seconds,
-            "approved_permission_seconds": approved_permission_seconds,
-            "adjusted_net_working_seconds": adjusted_net_working_seconds,
             "total_login_str": format_seconds(total_login_seconds),
             "lunch_break_str": format_seconds(lunch_break_seconds),
             "total_break_str": format_seconds(total_break_seconds),
             "total_move_str": format_seconds(total_move_seconds),
             "net_working_str": format_seconds(net_working_seconds),
-            "approved_permission_str": format_seconds(approved_permission_seconds),
-            "adjusted_net_working_str": format_seconds(adjusted_net_working_seconds),
         }
-
-    @staticmethod
-    def generate_employee_summary_text(db: BaseDatabase, telegram_id: int, date_str: str) -> str:
-        """Generates a styled Markdown text report of an employee's daily metrics."""
-        user = db.get_user(telegram_id)
-        if not user:
-            return "⚠️ Employee not found."
-
-        summary = AttendanceReporter.get_employee_daily_summary(db, telegram_id, date_str)
-        
-        text = (
-            f"📋 *Daily Attendance Summary*\n"
-            f"📅 *Date:* {date_str}\n"
-            f"👤 *Employee:* {user['full_name']} (@{user['username'] or 'NoUsername'})\n"
-            f"🆔 *Telegram ID:* `{user['telegram_id']}`\n"
-            f"━━━━━━━━━━━━━━━━━━━\n"
-            f"🟢 *First Login:* `{summary['login_time']}`\n"
-            f"🔴 *Last Logout:* `{summary['logout_time']}`\n"
-            f"━━━━━━━━━━━━━━━━━━━\n"
-            f"⏱️ *Total Working Duration:* `{summary['total_login_str']}`\n"
-            f"☕ *Total Break Duration:* `{summary['total_break_str']}`\n"
-            f"🚗 *Total Field movement:* `{summary['total_move_str']}`\n"
-            f"━━━━━━━━━━━━━━━━━━━\n"
-            f"💼 *Net Working Hours:* `{summary['net_working_str']}`\n"
-        )
-
-        # Show permission credit section only if there are approved permissions
-        if summary.get("approved_permission_seconds", 0) > 0:
-            text += (
-                f"📋 *Permission Credit:* `+{summary['approved_permission_str']}`\n"
-                f"✅ *Adjusted Net Hours:* `{summary['adjusted_net_working_str']}`\n"
-                f"_(Includes approved permission time)_"
-            )
-        else:
-            text += f"_(Calculated as: Total Working - Break Time)_"
-
-        return text
 
     @staticmethod
     def generate_admin_daily_report_text(db: BaseDatabase, date_str: str) -> str:

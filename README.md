@@ -30,7 +30,6 @@ Following clean architecture and OOP principles:
 │   ├── handlers.py              # Telegram command and button routers
 │   ├── keyboards.py             # ReplyKeyboardMarkup layout designs
 │   ├── validation.py            # Workflow sequence and business validation engine
-│   ├── permission_handler.py    # Multi-step permission request conversation flow
 │   └── shifts.py                # Per-employee shift lookup (DB + hardcoded fallback)
 ├── reports/
 │   ├── __init__.py              # Reports package exports

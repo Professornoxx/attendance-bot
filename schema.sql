@@ -85,27 +85,6 @@ CREATE TABLE IF NOT EXISTS fines (
     UNIQUE(telegram_id, date)
 );
 
--- 7. Permission Requests Table
-CREATE TABLE IF NOT EXISTS permission_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_id INTEGER NOT NULL,
-    username VARCHAR(255),
-    name VARCHAR(255) NOT NULL,
-    date VARCHAR(10) NOT NULL,           -- YYYY-MM-DD (the work date affected)
-    request_type VARCHAR(50) NOT NULL,   -- 'short_leave', 'late_arrival', 'early_departure', 'medical_leave', 'other'
-    start_time VARCHAR(8) NOT NULL,      -- HH:MM:SS
-    end_time VARCHAR(8) NOT NULL,        -- HH:MM:SS
-    duration_seconds INTEGER DEFAULT 0,  -- pre-calculated for attendance credit
-    reason VARCHAR(1000) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
-    approver_id INTEGER,
-    approver_name VARCHAR(255),
-    decided_at TIMESTAMP,
-    notification_status VARCHAR(50) DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (telegram_id) REFERENCES users(telegram_id) ON DELETE CASCADE
-);
-
 -- Create Indices for Optimized Lookup Queries
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_att_lookup ON attendance_sessions(telegram_id, date, status);
@@ -113,5 +92,3 @@ CREATE INDEX IF NOT EXISTS idx_brk_lookup ON break_sessions(telegram_id, date, s
 CREATE INDEX IF NOT EXISTS idx_move_lookup ON in_out_sessions(telegram_id, date, status);
 CREATE INDEX IF NOT EXISTS idx_fines_lookup ON fines(telegram_id, date);
 CREATE INDEX IF NOT EXISTS idx_elr_lookup ON early_logout_requests(telegram_id, date);
-CREATE INDEX IF NOT EXISTS idx_perm_lookup ON permission_requests(telegram_id, date);
-CREATE INDEX IF NOT EXISTS idx_perm_status ON permission_requests(status);

@@ -94,59 +94,6 @@ def notify_employee(telegram_id: int, message: str, parse_mode: str = "HTML") ->
         print(f"[NOTIFY] ❌ Exception for telegram_id={telegram_id}: {e}")
         return False
 
-def send_and_record_permission_notification(req: dict, status: str, approver_name: str) -> bool:
-    """Helper to compile, send and record a permission request notification."""
-    try:
-        from bot.permission_handler import REQUEST_TYPE_LABELS
-        from reports.reporter import format_seconds
-        import datetime as _notification_dt
-        label = REQUEST_TYPE_LABELS.get(req['request_type'], req['request_type'])
-        
-        # Build decided_at display
-        decided_at = req.get('decided_at') or _notification_dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        decided_display = decided_at[:16] if decided_at else '—'
-        
-        if status == 'approved':
-            message = (
-                f"✅ *Permission Request Approved*\n"
-                f"━━━━━━━━━━━━━━━━━━━\n"
-                f"📌 Type: {label}\n"
-                f"📅 Request Date: `{req['date']}`\n"
-                f"⏰ Time Range: `{req['start_time']}` → `{req['end_time']}`\n"
-                f"⏱️ Duration: `{format_seconds(req['duration_seconds'])}`\n"
-                f"📝 Reason: {req['reason']}\n"
-                f"━━━━━━━━━━━━━━━━━━━\n"
-                f"✅ *Status: APPROVED*\n"
-                f"👤 Approved by: *{approver_name}*\n"
-                f"🕐 Decided at: `{decided_display}`\n\n"
-                f"_Your approved hours have been credited to your attendance record._"
-            )
-        else:  # rejected
-            message = (
-                f"❌ *Permission Request Rejected*\n"
-                f"━━━━━━━━━━━━━━━━━━━\n"
-                f"📌 Type: {label}\n"
-                f"📅 Request Date: `{req['date']}`\n"
-                f"⏰ Time Range: `{req['start_time']}` → `{req['end_time']}`\n"
-                f"📝 Reason: {req['reason']}\n"
-                f"━━━━━━━━━━━━━━━━━━━\n"
-                f"❌ *Status: REJECTED*\n"
-                f"👤 Reviewed by: *{approver_name}*\n"
-                f"🕐 Decided at: `{decided_display}`\n\n"
-                f"_If you have questions, please contact your supervisor._"
-            )
-        
-        success = notify_employee(req['telegram_id'], message, parse_mode="Markdown")
-        db.update_permission_notification_status(req['id'], 'sent' if success else 'failed')
-        return success
-    except Exception as err:
-        print(f"⚠️ Error preparing notification for request {req.get('id')}: {err}")
-        try:
-            db.update_permission_notification_status(req['id'], 'failed')
-        except Exception:
-            pass
-        return False
-
 def resolve_shift_name(start_time: str, end_time: str) -> str:
     """Helper to classify shift timing details into readable descriptions."""
     if start_time == "08:30:00" and end_time == "19:00:00":
@@ -201,14 +148,6 @@ def get_summary():
     cursor.execute("SELECT COUNT(*) FROM early_logout_requests WHERE status = 'pending'")
     pending_requests = cursor.fetchone()[0] or 0
 
-    # Pending permission requests count
-    pending_permissions = 0
-    try:
-        cursor.execute("SELECT COUNT(*) FROM permission_requests WHERE status = 'pending'")
-        pending_permissions = cursor.fetchone()[0] or 0
-    except Exception:
-        pass
-    
     return jsonify({
         "total_employees": total_employees,
         "active_employees": active_now,
@@ -216,7 +155,6 @@ def get_summary():
         "banned_employees": banned_employees,
         "fines_today": fines_today,
         "pending_requests": pending_requests,
-        "pending_permissions": pending_permissions,
     })
 
 @app.route('/api/employees', methods=['GET'])
@@ -1673,125 +1611,6 @@ def export_records():
             return jsonify({"error": "reportlab not installed on host"}), 500
             
     return jsonify({"error": "Unsupported format"}), 400
-
-
-# ──────────────────────────────────────────────────────────────
-# Permission Request API Routes
-# ──────────────────────────────────────────────────────────────
-
-@app.route('/api/permissions', methods=['GET'])
-def get_permissions():
-    """
-    Returns all permission requests.
-    Optional query params:
-      ?status=pending|approved|rejected
-      ?date=YYYY-MM-DD  (filters by the permission date)
-    """
-    status_filter = request.args.get('status', None)
-    date_filter = request.args.get('date', None)
-
-    try:
-        records = db.get_all_permission_requests(status=status_filter)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-    # Optional date filter
-    if date_filter:
-        records = [r for r in records if r.get('date') == date_filter]
-
-    return jsonify(records)
-
-
-@app.route('/api/permissions/<int:request_id>/approve', methods=['POST'])
-def approve_permission(request_id: int):
-    """Approve a permission request from the dashboard."""
-    data = request.get_json(silent=True) or {}
-    approver_name = data.get('approver_name', 'Admin (Dashboard)')
-
-    req = db.get_permission_request(request_id)
-    if not req:
-        return jsonify({"error": "Permission request not found"}), 404
-
-    if req['status'] != 'pending':
-        return jsonify({"error": f"Request is already {req['status']}"}), 409
-
-    ok = db.update_permission_request_status(
-        request_id=request_id,
-        status='approved',
-        approver_id=None,
-        approver_name=approver_name,
-    )
-
-    if ok:
-        # Unconditionally reverse fine and upgrade to Full Day on permission approval
-        try:
-            telegram_id = req['telegram_id']
-            date = req['date']
-
-            # Remove any fine on record for this date
-            db.delete_fine(telegram_id, date)
-
-            # Flip all sessions on that date to Full Day and clear fine fields
-            conn = db.connect()
-            conn.execute(
-                """
-                UPDATE attendance_sessions 
-                SET is_half_day = 0, fine_applied = 0, fine_amount = 0.0, fine_reason = ''
-                WHERE telegram_id = ? AND date = ?
-                """,
-                (telegram_id, date)
-            )
-            conn.commit()
-        except Exception as recalc_err:
-            print(f"⚠️ Fine reversal error: {recalc_err}")
-
-        # Notify employee via Telegram
-        send_and_record_permission_notification(req, 'approved', approver_name)
-
-    return jsonify({"success": ok, "status": "approved"})
-
-
-@app.route('/api/permissions/<int:request_id>/reject', methods=['POST'])
-def reject_permission(request_id: int):
-    """Reject a permission request from the dashboard."""
-    data = request.get_json(silent=True) or {}
-    approver_name = data.get('approver_name', 'Admin (Dashboard)')
-
-    req = db.get_permission_request(request_id)
-    if not req:
-        return jsonify({"error": "Permission request not found"}), 404
-
-    if req['status'] != 'pending':
-        return jsonify({"error": f"Request is already {req['status']}"}), 409
-
-    ok = db.update_permission_request_status(
-        request_id=request_id,
-        status='rejected',
-        approver_id=None,
-        approver_name=approver_name,
-    )
-
-    if ok:
-        # Notify employee via Telegram
-        send_and_record_permission_notification(req, 'rejected', approver_name)
-
-    return jsonify({"success": ok, "status": "rejected"})
-
-
-@app.route('/api/permissions/<int:request_id>/retry-notification', methods=['POST'])
-def retry_permission_notification(request_id: int):
-    """Retry sending the Telegram notification for a permission decision."""
-    req = db.get_permission_request(request_id)
-    if not req:
-        return jsonify({"error": "Permission request not found"}), 404
-        
-    if req['status'] == 'pending':
-        return jsonify({"error": "Cannot notify for a pending request"}), 400
-
-    approver_name = req.get('approver_name') or 'Admin (Dashboard)'
-    success = send_and_record_permission_notification(req, req['status'], approver_name)
-    
-    return jsonify({"success": success})
 
 
 if __name__ == '__main__':

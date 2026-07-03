@@ -523,7 +523,6 @@ class BotHandlerManager:
             "Lunch In.": "break_out",
             "Out.": "in",
             "IN.": "out",
-            "My Summary 📊": "my_summary",
             "Admin Report 📈": "admin_report"
         }
 
@@ -545,13 +544,8 @@ class BotHandlerManager:
                 )
                 return
 
-        # Handle Summaries/Reports directly without state check
+        # Handle Reports directly without state check
         # (today_date and current_time already set above for the break-guard check)
-
-        if action == "my_summary":
-            summary_text = AttendanceReporter.generate_employee_summary_text(self.db, telegram_id, today_date)
-            await update.message.reply_text(summary_text, parse_mode="Markdown", reply_markup=keyboard)
-            return
 
         if action == "admin_report":
             if not is_admin:

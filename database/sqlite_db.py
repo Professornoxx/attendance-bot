@@ -98,52 +98,7 @@ class SQLiteDatabase(BaseDatabase):
                 except sqlite3.Error as e:
                     print(f"⚠️ Migration warning for '{col_name}' in attendance_sessions: {e}")
 
-        # 3. Auto-create permission_requests table if missing (self-healing)
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='permission_requests'"
-        )
-        if not cursor.fetchone():
-            try:
-                self.conn.executescript("""
-                    CREATE TABLE IF NOT EXISTS permission_requests (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        telegram_id INTEGER NOT NULL,
-                        username VARCHAR(255),
-                        name VARCHAR(255) NOT NULL,
-                        date VARCHAR(10) NOT NULL,
-                        request_type VARCHAR(50) NOT NULL,
-                        start_time VARCHAR(8) NOT NULL,
-                        end_time VARCHAR(8) NOT NULL,
-                        duration_seconds INTEGER DEFAULT 0,
-                        reason VARCHAR(1000) NOT NULL,
-                        status VARCHAR(20) DEFAULT 'pending',
-                        approver_id INTEGER,
-                        approver_name VARCHAR(255),
-                        decided_at TIMESTAMP,
-                        notification_status VARCHAR(50) DEFAULT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (telegram_id) REFERENCES users(telegram_id) ON DELETE CASCADE
-                    );
-                    CREATE INDEX IF NOT EXISTS idx_perm_lookup ON permission_requests(telegram_id, date);
-                    CREATE INDEX IF NOT EXISTS idx_perm_status ON permission_requests(status);
-                """)
-                self.conn.commit()
-                print("✅ Migration: Created 'permission_requests' table.")
-            except Exception as e:
-                print(f"⚠️ Migration warning for permission_requests: {e}")
-
-        # 4. Migrate permission_requests table (add notification_status if missing)
-        cursor.execute("PRAGMA table_info(permission_requests)")
-        existing_perm_columns = {row[1] for row in cursor.fetchall()}
-        if existing_perm_columns and "notification_status" not in existing_perm_columns:
-            try:
-                self.conn.execute("ALTER TABLE permission_requests ADD COLUMN notification_status VARCHAR(50) DEFAULT NULL")
-                self.conn.commit()
-                print("✅ Migration: Added column 'notification_status' to permission_requests table.")
-            except sqlite3.Error as e:
-                print(f"⚠️ Migration warning for 'notification_status' in permission_requests: {e}")
-
-        # 5. Clean up existing users' names and projects from EMPLOYEE_DATA fallback
+        # 3. Clean up existing users' names and projects from EMPLOYEE_DATA fallback
         try:
             from bot.shifts import EMPLOYEE_DATA
             cursor.execute("SELECT telegram_id, username, full_name, project, shift_type, shift_start, shift_end FROM users")
@@ -639,117 +594,6 @@ class SQLiteDatabase(BaseDatabase):
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
-    # --- Permission Requests ---
-    def create_permission_request(
-        self, telegram_id: int, username: Optional[str], name: str,
-        date: str, request_type: str, start_time: str, end_time: str,
-        duration_seconds: int, reason: str
-    ) -> int:
-        """Create a new permission request. Returns the new row ID."""
-        conn = self.connect()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                INSERT INTO permission_requests
-                    (telegram_id, username, name, date, request_type,
-                     start_time, end_time, duration_seconds, reason, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-                """,
-                (telegram_id, username, name, date, request_type,
-                 start_time, end_time, duration_seconds, reason)
-            )
-            conn.commit()
-            return cursor.lastrowid
-        except Exception as e:
-            print(f"SQLite create_permission_request Error: {e}")
-            conn.rollback()
-            raise e
-
-    def get_permission_request(self, request_id: int) -> Optional[Dict[str, Any]]:
-        """Fetch a single permission request by ID."""
-        conn = self.connect()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM permission_requests WHERE id = ?", (request_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-    def get_permission_requests_by_date(self, telegram_id: int, date: str) -> List[Dict[str, Any]]:
-        """Fetch all permission requests for an employee on a specific date."""
-        conn = self.connect()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM permission_requests WHERE telegram_id = ? AND date = ? ORDER BY id ASC",
-            (telegram_id, date)
-        )
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-
-    def get_approved_permission_seconds(self, telegram_id: int, date: str) -> int:
-        """Returns total approved permission duration (seconds) for an employee on a date."""
-        conn = self.connect()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT SUM(duration_seconds) FROM permission_requests "
-            "WHERE telegram_id = ? AND date = ? AND status = 'approved'",
-            (telegram_id, date)
-        )
-        row = cursor.fetchone()
-        return row[0] or 0
-
-    def get_all_permission_requests(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Fetch all permission requests, optionally filtered by status."""
-        conn = self.connect()
-        cursor = conn.cursor()
-        if status:
-            cursor.execute(
-                "SELECT * FROM permission_requests WHERE status = ? ORDER BY id DESC",
-                (status,)
-            )
-        else:
-            cursor.execute("SELECT * FROM permission_requests ORDER BY id DESC")
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
-
-    def update_permission_request_status(
-        self, request_id: int, status: str,
-        approver_id: Optional[int] = None, approver_name: Optional[str] = None
-    ) -> bool:
-        """Update a permission request's decision (approve/reject) with approver info."""
-        conn = self.connect()
-        try:
-            import datetime as _dt
-            now_str = _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            conn.execute(
-                """
-                UPDATE permission_requests
-                SET status = ?, approver_id = ?, approver_name = ?, decided_at = ?
-                WHERE id = ?
-                """,
-                (status, approver_id, approver_name, now_str, request_id)
-            )
-            conn.commit()
-            return True
-        except Exception as e:
-            print(f"SQLite update_permission_request_status Error: {e}")
-            conn.rollback()
-            return False
-
-    def update_permission_notification_status(self, request_id: int, status: str) -> bool:
-        """Update the Telegram notification status ('sent', 'failed') for a request."""
-        conn = self.connect()
-        try:
-            conn.execute(
-                "UPDATE permission_requests SET notification_status = ? WHERE id = ?",
-                (status, request_id)
-            )
-            conn.commit()
-            return True
-        except sqlite3.Error as e:
-            print(f"SQLite update_permission_notification_status Error: {e}")
-            conn.rollback()
-            return False
-
     def get_user_by_username(self, username: str) -> Optional[Dict[str, Any]]:
         """Fetch a single user by Telegram username (case-insensitive, normalized)."""
         if not username:
@@ -857,8 +701,8 @@ class SQLiteDatabase(BaseDatabase):
             
             # List of all tables that contain telegram_id
             tables = [
-                "users", "attendance_sessions", "break_sessions", 
-                "in_out_sessions", "early_logout_requests", "fines", "permission_requests"
+                "users", "attendance_sessions", "break_sessions",
+                "in_out_sessions", "early_logout_requests", "fines"
             ]
             for t in tables:
                 cursor.execute(f"UPDATE {t} SET telegram_id = ? WHERE telegram_id = ?", (new_telegram_id, old_telegram_id))

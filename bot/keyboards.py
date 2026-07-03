@@ -25,10 +25,6 @@ class BotKeyboards:
             [
                 KeyboardButton("Lunch Out."),
                 KeyboardButton("Lunch In.")
-            ],
-            [
-                KeyboardButton("My Summary 📊"),
-                KeyboardButton("Permission Request 📋")
             ]
         ]
 

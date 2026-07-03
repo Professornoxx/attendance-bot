@@ -1,15 +1,11 @@
 import sys
 import os
 import logging
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 import config
 from database.sqlite_db import SQLiteDatabase
 from google_sheets.sheets_sync import GoogleSheetsSyncManager
 from bot.handlers import BotHandlerManager
-from bot.permission_handler import (
-    build_permission_conversation_handler,
-    handle_approval_callback,
-)
 
 # Configure logging
 logging.basicConfig(
@@ -74,20 +70,10 @@ def main() -> None:
     # 5. Handler Manager Setup
     manager = BotHandlerManager(db, sheets_sync)
 
-    # Share database with bot_data so ConversationHandler can access it
-    application.bot_data["db"] = db
-
     # Register bot event routes
-    # IMPORTANT: ConversationHandler must be registered BEFORE the generic
-    # MessageHandler so it intercepts the "Permission Request 📋" button first.
-    application.add_handler(build_permission_conversation_handler())
     application.add_handler(CommandHandler("start", manager.start_command))
     application.add_handler(CommandHandler("report", manager.report_command))
     application.add_handler(CommandHandler("request", manager.request_command))
-    # Admin approval callbacks (pr_approve_N / pr_reject_N)
-    application.add_handler(
-        CallbackQueryHandler(handle_approval_callback, pattern=r"^pr_(approve|reject)_\d+$")
-    )
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manager.handle_message))
 
     print("\n----------------------------------------------------")

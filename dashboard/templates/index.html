@@ -44,10 +44,6 @@
                     <i class="fa-solid fa-envelope-open-text"></i> Early Logout Requests
                     <span class="badge badge-error hidden" id="requests-pending-badge">0</span>
                 </a>
-                <a href="#permissions" class="nav-item" id="permissions-nav-item" onclick="switchTab('permissions')">
-                    <i class="fa-solid fa-shield-halved"></i> Permission Requests
-                    <span class="badge badge-warning hidden" id="permissions-pending-badge">0</span>
-                </a>
                 <a href="#export" class="nav-item" onclick="switchTab('export')">
                     <i class="fa-solid fa-file-export"></i> Data Exports
                 </a>
@@ -434,110 +430,6 @@
                 </div>
             </section>
 
-            <!-- SCREEN 6: PERMISSION REQUESTS -->
-            <section id="screen-permissions" class="screen-section hidden">
-                <div class="glass-panel">
-                    <div class="panel-header" style="flex-wrap:wrap; gap:16px; margin-bottom: 24px;">
-                        <div>
-                            <h3><i class="fa-solid fa-shield-halved"></i> Permission Requests</h3>
-                            <span class="subtext">Manage employee leave, late arrival, and absence permissions.</span>
-                        </div>
-                        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            <select id="perm-status-filter" onchange="loadPermissions()"
-                                style="background:var(--surface-2); border:1px solid var(--border); color:var(--text-primary); padding:8px 12px; border-radius:8px; outline:none; font-family:inherit; cursor:pointer;">
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
-                            <button class="btn btn-secondary" onclick="loadPermissions()" style="padding:8px 16px;">
-                                <i class="fa-solid fa-rotate"></i> Refresh
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Sub-tab bar -->
-                    <div class="perm-tabs"
-                        style="display:flex; gap:0; margin-bottom:24px; border-bottom:2px solid var(--border);">
-                        <button class="perm-tab active" id="perm-tab-pending" onclick="switchPermTab('pending')">
-                            <i class="fa-solid fa-clock"></i> Pending
-                            <span class="tab-count" id="perm-count-pending">0</span>
-                        </button>
-                        <button class="perm-tab" id="perm-tab-approved" onclick="switchPermTab('approved')">
-                            <i class="fa-solid fa-circle-check"></i> Approved
-                            <span class="tab-count" id="perm-count-approved">0</span>
-                        </button>
-                        <button class="perm-tab" id="perm-tab-rejected" onclick="switchPermTab('rejected')">
-                            <i class="fa-solid fa-circle-xmark"></i> Rejected
-                            <span class="tab-count" id="perm-count-rejected">0</span>
-                        </button>
-                        <button class="perm-tab" id="perm-tab-impact" onclick="switchPermTab('impact')">
-                            <i class="fa-solid fa-chart-pie"></i> Impact
-                        </button>
-                    </div>
-
-                    <!-- Pending tab content -->
-                    <div id="perm-panel-pending">
-                        <div id="perm-pending-list" class="perm-cards-grid">
-                            <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading permission
-                                requests...</div>
-                        </div>
-                    </div>
-
-                    <!-- Approved tab content -->
-                    <div id="perm-panel-approved" class="hidden">
-                        <div id="perm-approved-table-container" class="log-table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Employee</th>
-                                        <th>Type</th>
-                                        <th>Date</th>
-                                        <th>Time Range</th>
-                                        <th>Duration</th>
-                                        <th>Reason</th>
-                                        <th>Approved By</th>
-                                        <th>Decided At</th>
-                                        <th>Notification</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="perm-approved-list"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Rejected tab content -->
-                    <div id="perm-panel-rejected" class="hidden">
-                        <div id="perm-rejected-table-container" class="log-table-container">
-                            <table class="data-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Employee</th>
-                                        <th>Type</th>
-                                        <th>Date</th>
-                                        <th>Time Range</th>
-                                        <th>Reason</th>
-                                        <th>Rejected By</th>
-                                        <th>Decided At</th>
-                                        <th>Notification</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="perm-rejected-list"></tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- Impact tab content -->
-                    <div id="perm-panel-impact" class="hidden">
-                        <div class="perm-impact-grid" id="perm-impact-content">
-                            <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Computing impact data...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
     </div>
 

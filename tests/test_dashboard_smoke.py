@@ -69,10 +69,6 @@ class DashboardSmokeTests(unittest.TestCase):
         res = self.client.get("/api/requests")
         self.assertEqual(res.status_code, 200)
 
-    def test_permissions_endpoint(self):
-        res = self.client.get("/api/permissions")
-        self.assertEqual(res.status_code, 200)
-
     def test_attendance_daily_endpoint(self):
         res = self.client.get("/api/attendance/daily")
         self.assertEqual(res.status_code, 200)

@@ -26,7 +26,6 @@ from bot.validation import (
 )
 from bot.shifts import get_employee_shift
 from bot.keyboards import BotKeyboards
-from bot.permission_handler import _maybe_reverse_fine
 from reports.reporter import AttendanceReporter, calculate_time_diff_seconds
 
 
@@ -188,30 +187,6 @@ class ShiftLookupNoLeakTests(unittest.TestCase):
         self.assertEqual((start, end), ("09:00:00", "18:00:00"))
 
 
-class PermissionFineReversalTests(unittest.TestCase):
-    def setUp(self):
-        self.db = make_temp_db()
-        self.tid = 4004
-        self.db.register_user(self.tid, "permuser", "Perm User", "employee", "09:00:00", "18:00:00")
-
-    def tearDown(self):
-        self.db.close()
-
-    def test_approval_clears_fine_and_marks_full_day(self):
-        sess_id = self.db.create_attendance_session(self.tid, "permuser", "Perm User", "2026-07-03", "09:00:00")
-        self.db.update_attendance_session(sess_id, "14:00:00", 5 * 3600, is_half_day=1)
-        self.db.set_attendance_fine(sess_id, 1, 500.0, "Early Logout")
-        self.db.create_fine(self.tid, "2026-07-03", 500.0, "Early Logout")
-
-        req = {"telegram_id": self.tid, "date": "2026-07-03"}
-        _maybe_reverse_fine(self.db, req)
-
-        sessions = self.db.get_attendance_sessions_by_date(self.tid, "2026-07-03")
-        self.assertEqual(sessions[0]["is_half_day"], 0)
-        self.assertEqual(sessions[0]["fine_applied"], 0)
-        self.assertEqual(self.db.get_fines_by_employee(self.tid), [])
-
-
 class ReporterSummaryTests(unittest.TestCase):
     def setUp(self):
         self.db = make_temp_db()
@@ -244,18 +219,18 @@ class KeyboardTests(unittest.TestCase):
     def _button_texts(self, markup):
         return {btn.text for row in markup.keyboard for btn in row}
 
-    def test_employee_keyboard_has_summary_and_permission_request(self):
+    def test_employee_keyboard_has_no_admin_only_buttons(self):
         kb = BotKeyboards.get_attendance_keyboard(is_admin=False)
         texts = self._button_texts(kb)
-        self.assertIn("My Summary 📊", texts)
-        self.assertIn("Permission Request 📋", texts)
+        self.assertNotIn("My Summary 📊", texts)
+        self.assertNotIn("Permission Request 📋", texts)
         self.assertNotIn("Admin Report 📈", texts)
 
-    def test_admin_keyboard_has_everything(self):
+    def test_admin_keyboard_has_admin_report_only(self):
         kb = BotKeyboards.get_attendance_keyboard(is_admin=True)
         texts = self._button_texts(kb)
-        self.assertIn("My Summary 📊", texts)
-        self.assertIn("Permission Request 📋", texts)
+        self.assertNotIn("My Summary 📊", texts)
+        self.assertNotIn("Permission Request 📋", texts)
         self.assertIn("Admin Report 📈", texts)
 
 
