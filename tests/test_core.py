@@ -219,19 +219,13 @@ class KeyboardTests(unittest.TestCase):
     def _button_texts(self, markup):
         return {btn.text for row in markup.keyboard for btn in row}
 
-    def test_employee_keyboard_has_no_admin_only_buttons(self):
-        kb = BotKeyboards.get_attendance_keyboard(is_admin=False)
+    def test_keyboard_has_only_punch_buttons(self):
+        kb = BotKeyboards.get_attendance_keyboard()
         texts = self._button_texts(kb)
-        self.assertNotIn("My Summary 📊", texts)
-        self.assertNotIn("Permission Request 📋", texts)
-        self.assertNotIn("Admin Report 📈", texts)
-
-    def test_admin_keyboard_has_admin_report_only(self):
-        kb = BotKeyboards.get_attendance_keyboard(is_admin=True)
-        texts = self._button_texts(kb)
-        self.assertNotIn("My Summary 📊", texts)
-        self.assertNotIn("Permission Request 📋", texts)
-        self.assertIn("Admin Report 📈", texts)
+        self.assertEqual(
+            texts,
+            {"Login.", "Logout.", "Out.", "IN.", "Lunch Out.", "Lunch In."}
+        )
 
 
 class BotHandlerIntegrationTests(unittest.IsolatedAsyncioTestCase):

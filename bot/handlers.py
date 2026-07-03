@@ -1,4 +1,3 @@
-from datetime import datetime
 from telegram import Update
 from telegram.ext import ContextTypes
 import config
@@ -271,7 +270,7 @@ class BotHandlerManager:
                 self.db.register_user(telegram_id, username, db_user["full_name"], "admin")
                 db_user = self.db.get_user(telegram_id)
 
-            keyboard = BotKeyboards.get_attendance_keyboard(is_admin=is_admin)
+            keyboard = BotKeyboards.get_attendance_keyboard()
             await update.message.reply_text(
                 text=f"👋 *Welcome back, {db_user['full_name']}!*\n\n"
                      f"Select an action from the menu below to punch your time card.",
@@ -286,39 +285,6 @@ class BotHandlerManager:
                      "to register and start using the system.",
                 parse_mode="Markdown"
             )
-
-    async def report_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handler for admin command /report [YYYY-MM-DD]. Allows past-date dashboard querying."""
-        user = update.effective_user
-        if not user:
-            return
-
-        telegram_id = user.id
-        db_user = self.db.get_user(telegram_id)
-        
-        # Check permissions
-        is_admin = telegram_id in config.ADMIN_TELEGRAM_IDS or (db_user and db_user["role"] == "admin")
-        if not is_admin:
-            await update.message.reply_text("⚠️ Access Denied: Administrator privileges required.")
-            return
-
-        # Parse date arguments
-        args = context.args
-        if args:
-            target_date = args[0]
-            try:
-                # Validate date format
-                datetime.strptime(target_date, "%Y-%m-%d")
-            except ValueError:
-                await update.message.reply_text("⚠️ Invalid Date Format. Please use `YYYY-MM-DD` (e.g. `/report 2026-06-23`).")
-                return
-        else:
-            target_date = get_current_date_str()
-
-        await update.message.reply_text("🔄 Generating report...")
-        report_text = AttendanceReporter.generate_admin_daily_report_text(self.db, target_date)
-        keyboard = BotKeyboards.get_attendance_keyboard(is_admin=True)
-        await update.message.reply_text(report_text, parse_mode="Markdown", reply_markup=keyboard)
 
     async def request_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handler for /request [reason] command. Allows employees to submit early logout requests."""
@@ -447,7 +413,7 @@ class BotHandlerManager:
         
         db_user = self.db.get_user(telegram_id)
         is_admin = telegram_id in config.ADMIN_TELEGRAM_IDS or (db_user and db_user["role"] == "admin")
-        keyboard = BotKeyboards.get_attendance_keyboard(is_admin=is_admin)
+        keyboard = BotKeyboards.get_attendance_keyboard()
         is_group = update.effective_chat.type in ["group", "supergroup"]
 
         # 1. Handle Registration Flow for unregistered users
@@ -470,7 +436,7 @@ class BotHandlerManager:
             success = self.db.register_user(telegram_id, username, message_text, role, shift_start, shift_end)
             
             if success:
-                keyboard = BotKeyboards.get_attendance_keyboard(is_admin=(role == "admin"))
+                keyboard = BotKeyboards.get_attendance_keyboard()
                 await update.message.reply_text(
                     text=f"✅ *Registration Successful!*\n\n"
                          f"Registered as: *{message_text}*\n"
@@ -523,7 +489,6 @@ class BotHandlerManager:
             "Lunch In.": "break_out",
             "Out.": "in",
             "IN.": "out",
-            "Admin Report 📈": "admin_report"
         }
 
         action = action_map.get(message_text)
@@ -543,17 +508,6 @@ class BotHandlerManager:
                     reply_markup=keyboard
                 )
                 return
-
-        # Handle Reports directly without state check
-        # (today_date and current_time already set above for the break-guard check)
-
-        if action == "admin_report":
-            if not is_admin:
-                await update.message.reply_text("⚠️ Access Denied: Admin privileges required.", reply_markup=keyboard)
-                return
-            report_text = AttendanceReporter.generate_admin_daily_report_text(self.db, today_date)
-            await update.message.reply_text(report_text, parse_mode="Markdown", reply_markup=keyboard)
-            return
 
         # --- Running Punch Actions ---
         # B. Validate State Transition

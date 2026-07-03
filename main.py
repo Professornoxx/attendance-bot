@@ -72,7 +72,6 @@ def main() -> None:
 
     # Register bot event routes
     application.add_handler(CommandHandler("start", manager.start_command))
-    application.add_handler(CommandHandler("report", manager.report_command))
     application.add_handler(CommandHandler("request", manager.request_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, manager.handle_message))
 

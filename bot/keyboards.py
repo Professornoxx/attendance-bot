@@ -8,7 +8,7 @@ class BotKeyboards:
     """
 
     @staticmethod
-    def get_attendance_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:
+    def get_attendance_keyboard() -> ReplyKeyboardMarkup:
         """
         Returns the persistent reply keyboard for employee attendance tracking.
         Enables one-tap punching.
@@ -27,9 +27,6 @@ class BotKeyboards:
                 KeyboardButton("Lunch In.")
             ]
         ]
-
-        if is_admin:
-            keyboard.append([KeyboardButton("Admin Report 📈")])
 
         return ReplyKeyboardMarkup(
             keyboard=keyboard,
